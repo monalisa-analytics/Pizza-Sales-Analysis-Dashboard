@@ -1,0 +1,120 @@
+/************************************************************
+ Pizza Sales Dashboard – Power BI DAX
+ Author: Monalisa Mahanta
+ Tool: Power BI
+************************************************************/
+
+-- =========================================================
+-- KPI MEASURES
+-- =========================================================
+
+Total Revenue =
+SUM ( 'Data Model - Pizza Sales'[total_price] )
+
+Total Orders =
+DISTINCTCOUNT ( 'Data Model - Pizza Sales'[order_id] )
+
+Total Pizzas Sold =
+SUM ( 'Data Model - Pizza Sales'[quantity] )
+
+Average Order Value =
+DIVIDE ( [Total Revenue], [Total Orders] )
+
+Avg Pizzas per Order =
+DIVIDE ( [Total Pizzas Sold], [Total Orders] )
+
+Revenue % by Pizza Size =
+DIVIDE (
+    [Total Revenue],
+    CALCULATE (
+        [Total Revenue],
+        ALL ( 'Data Model - Pizza Sales'[pizza_size] )
+    )
+)
+
+Seat Utilization % =
+VAR OrdersPerHour =
+    DISTINCTCOUNT ( 'Data Model - Pizza Sales'[order_id] )
+VAR Customers =
+    OrdersPerHour * 2
+RETURN
+DIVIDE ( Customers, 60 )
+
+Order Hour =
+HOUR ( 'Data Model - Pizza Sales'[order_time] )
+
+Top Pizza Name =
+VAR T =
+    TOPN (
+        1,
+        SUMMARIZE (
+            'Data Model - Pizza Sales',
+            'Data Model - Pizza Sales'[pizza_name],
+            "Qty", [Total Pizzas Sold]
+        ),
+        [Qty], DESC
+    )
+RETURN
+MAXX ( T, 'Data Model - Pizza Sales'[pizza_name] )
+
+-- =========================================================
+-- DATE TABLE
+-- =========================================================
+
+Date Table =
+CALENDAR (
+    MIN ( 'Data Model - Pizza Sales'[order_date] ),
+    MAX ( 'Data Model - Pizza Sales'[order_date] )
+)
+
+Day Name =
+FORMAT ( 'Date Table'[Date], "dddd" )
+
+Day of Month =
+DAY ( 'Date Table'[Date] )
+
+Day Type =
+IF (
+    WEEKDAY ( 'Date Table'[Date], 2 ) IN { 6, 7 },
+    "Weekend",
+    "Weekday"
+)
+
+Month =
+FORMAT ( 'Date Table'[Date], "MMM" )
+
+Month_Number =
+MONTH ( 'Date Table'[Date] )
+
+Week_No =
+WEEKNUM ( 'Date Table'[Date], 2 )
+
+Year =
+YEAR ( 'Date Table'[Date] )
+
+-- =========================================================
+-- TIME TABLE
+-- =========================================================
+
+Time Table =
+DISTINCT (
+    SELECTCOLUMNS (
+        'Data Model - Pizza Sales',
+        "Order Hour", HOUR ( 'Data Model - Pizza Sales'[order_time] )
+    )
+)
+
+Hour Label =
+FORMAT (
+    TIME ( 'Time Table'[Order Hour], 0, 0 ),
+    "hh AM/PM"
+)
+
+Time Period =
+SWITCH (
+    TRUE(),
+    'Time Table'[Order Hour] >= 6 && 'Time Table'[Order Hour] < 12, "Morning",
+    'Time Table'[Order Hour] >= 12 && 'Time Table'[Order Hour] < 17, "Afternoon",
+    'Time Table'[Order Hour] >= 17 && 'Time Table'[Order Hour] < 21, "Evening",
+    "Night"
+)
